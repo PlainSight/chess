@@ -27,18 +27,11 @@ var (
 	tile    uint32
 )
 
-func handleResize(w *glfw.Window, cWIDTH int, cHEIGHT int) {
-	cWIDTH = cWIDTH
-	cHEIGHT = cHEIGHT
+func handleResize(w *glfw.Window, cWidth int, cHeight int) {
+	cWIDTH = cWidth
+	cHEIGHT = cHeight
 	xSCALE = float32(cWIDTH) / 8
 	ySCALE = float32(cHEIGHT) / 8
-
-	//fmt.Println("--")
-	//fmt.Println(cWIDTH)
-	//fmt.Println(cHEIGHT)
-	//fmt.Println(xSCALE)
-	//fmt.Println(ySCALE)
-
 	setupScene()
 	drawScene()
 }
@@ -201,12 +194,6 @@ func drawTile(x float32, y float32, w float32, h float32) {
 	x2 := x + w
 	y2 := y + h
 
-	//fmt.Println("++")
-	//fmt.Println(x1)
-	//fmt.Println(y1)
-	//fmt.Println(x2)
-	//fmt.Println(y2)
-
 	gl.BindTexture(gl.TEXTURE_2D, tile)
 
 	gl.Color4f(1, 1, 1, 1)
@@ -215,10 +202,13 @@ func drawTile(x float32, y float32, w float32, h float32) {
 
 	gl.TexCoord2f(0, 0)
 	gl.Vertex3f(x1, y1, 1)
+
 	gl.TexCoord2f(1, 0)
 	gl.Vertex3f(x2, y1, 1)
+
 	gl.TexCoord2f(1, 1)
 	gl.Vertex3f(x2, y2, 1)
+
 	gl.TexCoord2f(0, 1)
 	gl.Vertex3f(x1, y2, 1)
 
