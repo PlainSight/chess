@@ -44,11 +44,11 @@ func handleClick(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mo
 	xpos, ypos := w.GetCursorPos()
 
 	if button == glfw.MouseButton2 {
-		move(uint(xpos/float64(xSCALE)), uint(ypos/float64(ySCALE)))
+		movePiece(uint(xpos/float64(xSCALE)), uint(ypos/float64(ySCALE)))
 	}
 
 	if button == glfw.MouseButton1 {
-		grab(uint(xpos/float64(xSCALE)), uint(ypos/float64(ySCALE)))
+		grabPiece(uint(xpos/float64(xSCALE)), uint(ypos/float64(ySCALE)))
 	}
 }
 

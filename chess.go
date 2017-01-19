@@ -20,12 +20,17 @@ type position struct {
 	y uint
 }
 
+type move struct {
+	from *position
+	to *position
+}
+
 var (
 	grid     [GRIDLENGTH][GRIDLENGTH]*piece
 	selected *position
 )
 
-func grab(x uint, y uint) {
+func grabPiece(x uint, y uint) {
 	if grid[x][y] != nil {
 		if grid[x][y].faction == playerFaction {
 			selected = &position{x: x, y: y}
@@ -33,9 +38,10 @@ func grab(x uint, y uint) {
 	}
 }
 
-func move(x uint, y uint) {
-	if selected != nil && grid[selected.x][selected.y] != nil {
-		if validateMove(x, y) {
+func movePiece(x uint, y uint) {
+	to := position{ x: x, y: y}
+	if selected != nil {
+		if validateMove(move {from: selected, to: &to}) {
 			grid[x][y] = grid[selected.x][selected.y]
 			grid[selected.x][selected.y] = nil
 			selected = nil
@@ -43,12 +49,41 @@ func move(x uint, y uint) {
 	}
 }
 
-func validateMove(x uint, y uint) bool {
-	// from values
-	fx := selected.x
-	fy := selected.y
+func findAllValidMoves(faction uint) ([]*move) {
+
+	validMoves := [1024]*move{}
+	moveCount := uint(0)
+
+	for fx := uint(0); fx < GRIDLENGTH; fx++ {
+		for fy:= uint(0); fy < GRIDLENGTH; fy++ {
+			from := position{ x: fx, y: fy }
+			for x := uint(0); x < GRIDLENGTH; x++ {
+				for y:= uint(0); y < GRIDLENGTH; y++ {
+					to := position{ x: x, y: y }
+					move := move{from : &from, to: &to}
+					if grid[fy][fy] != nil && validateMove(move) {
+						validMoves[moveCount] = &move
+						moveCount++
+					}
+				}
+			}
+		}
+	}
+
+	return validMoves[:moveCount]
+} 
+
+// from and to
+func validateMove(move move) bool {
+
+	fx := move.from.x
+	fy := move.from.y
+	x := move.to.x
+	y := move.to.y
+
 	// selected piece
-	selectedPiece := grid[selected.x][selected.y]
+	selectedPiece := grid[fx][fy]
+	// target piece
 	target := grid[x][y]
 
 	switch selectedPiece.class {
@@ -226,7 +261,11 @@ func validateMove(x uint, y uint) bool {
 	return false
 }
 
-func isCheck() bool {
+func isCheck(faction uint) bool {
+	return false
+}
+
+func isCheckMate(faction uint) bool {
 	return false
 }
 
