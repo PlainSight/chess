@@ -1,5 +1,10 @@
 package main
 
+import (
+	"math/rand"
+	"os"
+)
+
 func main() {
 	startGame()
 	setup()
@@ -22,7 +27,7 @@ type position struct {
 
 type move struct {
 	from *position
-	to *position
+	to   *position
 }
 
 var (
@@ -39,29 +44,40 @@ func grabPiece(x uint, y uint) {
 }
 
 func movePiece(x uint, y uint) {
-	to := position{ x: x, y: y}
+	to := position{x: x, y: y}
 	if selected != nil {
-		if validateMove(move {from: selected, to: &to}) {
+		if validateMove(move{from: selected, to: &to}) {
 			grid[x][y] = grid[selected.x][selected.y]
 			grid[selected.x][selected.y] = nil
 			selected = nil
+			enemyMove()
 		}
 	}
 }
 
-func findAllValidMoves(faction uint) ([]*move) {
+func enemyMove() {
+	moves := findAllValidMoves(1)
+	if len(moves) == 0 {
+		os.Exit(0)
+	}
+	chosen := moves[rand.Intn(len(moves))]
+	grid[chosen.to.x][chosen.to.y] = grid[chosen.from.x][chosen.from.y]
+	grid[chosen.from.x][chosen.from.y] = nil
+}
+
+func findAllValidMoves(faction uint) []*move {
 
 	validMoves := [1024]*move{}
 	moveCount := uint(0)
 
 	for fx := uint(0); fx < GRIDLENGTH; fx++ {
-		for fy:= uint(0); fy < GRIDLENGTH; fy++ {
-			from := position{ x: fx, y: fy }
+		for fy := uint(0); fy < GRIDLENGTH; fy++ {
+			from := position{x: fx, y: fy}
 			for x := uint(0); x < GRIDLENGTH; x++ {
-				for y:= uint(0); y < GRIDLENGTH; y++ {
-					to := position{ x: x, y: y }
-					move := move{from : &from, to: &to}
-					if grid[fy][fy] != nil && validateMove(move) {
+				for y := uint(0); y < GRIDLENGTH; y++ {
+					to := position{x: x, y: y}
+					move := move{from: &from, to: &to}
+					if grid[fx][fy] != nil && grid[fx][fy].faction == faction && validateMove(move) {
 						validMoves[moveCount] = &move
 						moveCount++
 					}
@@ -71,7 +87,7 @@ func findAllValidMoves(faction uint) ([]*move) {
 	}
 
 	return validMoves[:moveCount]
-} 
+}
 
 // from and to
 func validateMove(move move) bool {

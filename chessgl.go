@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	//"fmt"
 	"image"
 	"image/draw"
 	_ "image/png"
