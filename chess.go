@@ -3,6 +3,7 @@ package main
 import (
 	"math/rand"
 	"os"
+	"sort"
 )
 
 func main() {
@@ -26,14 +27,78 @@ type position struct {
 }
 
 type move struct {
-	from *position
-	to   *position
+	from position
+	to   position
+}
+
+type moveSet struct {
+	moves []move
+}
+
+func (moveSet moveSet) Len() int {
+	return len(moveSet.moves)
+}
+func (moveSet moveSet) Less(i, j int) bool {
+	// i value
+	ival := 0
+	target := getGrid(moveSet.moves[i].to)
+	if target != nil {
+		switch target.class {
+		case 0:
+			ival = 1
+		case 1:
+			ival = 3
+		case 2:
+			ival = 3
+		case 3:
+			ival = 5
+		case 4:
+			ival = 9
+		case 5:
+			ival = 20
+		}
+	}
+
+	// j value
+	jval := 0
+	target = getGrid(moveSet.moves[j].to)
+	if target != nil {
+		switch target.class {
+		case 0:
+			jval = 1
+		case 1:
+			jval = 3
+		case 2:
+			jval = 3
+		case 3:
+			jval = 5
+		case 4:
+			jval = 9
+		case 5:
+			jval = 20
+		}
+	}
+
+	return ival > jval
+}
+func (moveSet moveSet) Swap(i, j int) {
+	temp := moveSet.moves[i]
+	moveSet.moves[i] = moveSet.moves[j]
+	moveSet.moves[j] = temp
 }
 
 var (
 	grid     [GRIDLENGTH][GRIDLENGTH]*piece
 	selected *position
 )
+
+func setGrid(pos position, piece *piece) {
+	grid[pos.x][pos.y] = piece
+}
+
+func getGrid(pos position) *piece {
+	return grid[pos.x][pos.y]
+}
 
 func grabPiece(x uint, y uint) {
 	if grid[x][y] != nil {
@@ -46,9 +111,9 @@ func grabPiece(x uint, y uint) {
 func movePiece(x uint, y uint) {
 	to := position{x: x, y: y}
 	if selected != nil {
-		if validateMove(move{from: selected, to: &to}) {
-			grid[x][y] = grid[selected.x][selected.y]
-			grid[selected.x][selected.y] = nil
+		if validateMove(move{from: *selected, to: to}) {
+			setGrid(to, getGrid(*selected))
+			setGrid(*selected, nil)
 			selected = nil
 			enemyMove()
 		}
@@ -56,37 +121,47 @@ func movePiece(x uint, y uint) {
 }
 
 func enemyMove() {
-	moves := findAllValidMoves(1)
-	if len(moves) == 0 {
+	moveSet := findAllValidMoves(1)
+	if len(moveSet.moves) == 0 {
 		os.Exit(0)
 	}
-	chosen := moves[rand.Intn(len(moves))]
-	grid[chosen.to.x][chosen.to.y] = grid[chosen.from.x][chosen.from.y]
-	grid[chosen.from.x][chosen.from.y] = nil
+	sort.Sort(moveSet)
+
+	choices := len(moveSet.moves)
+	if choices > 5 {
+		choices = 5
+	}
+
+	chosen := moveSet.moves[rand.Intn(choices)]
+	setGrid(chosen.to, getGrid(chosen.from))
+	setGrid(chosen.from, nil)
 }
 
-func findAllValidMoves(faction uint) []*move {
+func findAllValidMoves(faction uint) moveSet {
 
-	validMoves := [1024]*move{}
+	validMoves := [1024]move{}
 	moveCount := uint(0)
 
 	for fx := uint(0); fx < GRIDLENGTH; fx++ {
 		for fy := uint(0); fy < GRIDLENGTH; fy++ {
 			from := position{x: fx, y: fy}
-			for x := uint(0); x < GRIDLENGTH; x++ {
-				for y := uint(0); y < GRIDLENGTH; y++ {
-					to := position{x: x, y: y}
-					move := move{from: &from, to: &to}
-					if grid[fx][fy] != nil && grid[fx][fy].faction == faction && validateMove(move) {
-						validMoves[moveCount] = &move
-						moveCount++
+			fromPiece := getGrid(from)
+			if fromPiece != nil && fromPiece.faction == faction {
+				for x := uint(0); x < GRIDLENGTH; x++ {
+					for y := uint(0); y < GRIDLENGTH; y++ {
+						to := position{x: x, y: y}
+						move := move{from: from, to: to}
+						if validateMove(move) {
+							validMoves[moveCount] = move
+							moveCount++
+						}
 					}
 				}
 			}
 		}
 	}
 
-	return validMoves[:moveCount]
+	return moveSet{moves: validMoves[:moveCount]}
 }
 
 // from and to
@@ -118,9 +193,9 @@ func validateMove(move move) bool {
 		}
 
 		if fx == x {
-			return target == nil && advance == 1 || (canDoubleStep && advance == 2)
+			return target == nil && (advance == 1 || (canDoubleStep && advance == 2))
 		} else {
-			sidemovement := fy - y
+			sidemovement := fx - x
 			if sidemovement < 0 {
 				sidemovement = -sidemovement
 			}
