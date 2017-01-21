@@ -4,9 +4,11 @@ import (
 	"math/rand"
 	"os"
 	"sort"
+	"time"
 )
 
 func main() {
+	rand.Seed(time.Now().UTC().UnixNano())
 	startGame()
 	setup()
 }
@@ -31,6 +33,28 @@ type move struct {
 	to   position
 }
 
+func (move move) Value() int {
+	val := 0
+	target := getGrid(move.to)
+	if target != nil {
+		switch target.class {
+		case 0:
+			val = 1
+		case 1:
+			val = 3
+		case 2:
+			val = 3
+		case 3:
+			val = 5
+		case 4:
+			val = 9
+		case 5:
+			val = 20
+		}
+	}
+	return val
+}
+
 type moveSet struct {
 	moves []move
 }
@@ -40,44 +64,10 @@ func (moveSet moveSet) Len() int {
 }
 func (moveSet moveSet) Less(i, j int) bool {
 	// i value
-	ival := 0
-	target := getGrid(moveSet.moves[i].to)
-	if target != nil {
-		switch target.class {
-		case 0:
-			ival = 1
-		case 1:
-			ival = 3
-		case 2:
-			ival = 3
-		case 3:
-			ival = 5
-		case 4:
-			ival = 9
-		case 5:
-			ival = 20
-		}
-	}
+	ival := moveSet.moves[i].Value()
 
 	// j value
-	jval := 0
-	target = getGrid(moveSet.moves[j].to)
-	if target != nil {
-		switch target.class {
-		case 0:
-			jval = 1
-		case 1:
-			jval = 3
-		case 2:
-			jval = 3
-		case 3:
-			jval = 5
-		case 4:
-			jval = 9
-		case 5:
-			jval = 20
-		}
-	}
+	jval := moveSet.moves[j].Value()
 
 	return ival > jval
 }
