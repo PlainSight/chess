@@ -224,8 +224,8 @@ func drawScene() {
 		for y := uint(0); y < GRIDLENGTH; y++ {
 			drawTile(float32(x)*xSCALE, float32(y)*ySCALE, xSCALE, ySCALE)
 
-			if grid[x][y] != nil {
-				drawPiece(float32(x)*xSCALE, float32(y)*ySCALE, xSCALE, ySCALE, grid[x][y])
+			if board[x][y] != nil {
+				drawPiece(float32(x)*xSCALE, float32(y)*ySCALE, xSCALE, ySCALE, board[x][y])
 			}
 		}
 	}

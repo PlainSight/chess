@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math/rand"
 	"os"
 	"sort"
@@ -11,6 +12,7 @@ func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 	startGame()
 	setup()
+	fmt.Println("Starting game")
 }
 
 const (
@@ -33,9 +35,11 @@ type move struct {
 	to   position
 }
 
-func (move move) Value() int {
+type grid [GRIDLENGTH][GRIDLENGTH]*piece
+
+func (move move) Value(g *grid) int {
 	val := 0
-	target := getGrid(move.to)
+	target := getGrid(g, move.to)
 	if target != nil {
 		switch target.class {
 		case 0:
@@ -57,6 +61,7 @@ func (move move) Value() int {
 
 type moveSet struct {
 	moves []move
+	g     *grid
 }
 
 func (moveSet moveSet) Len() int {
@@ -64,10 +69,10 @@ func (moveSet moveSet) Len() int {
 }
 func (moveSet moveSet) Less(i, j int) bool {
 	// i value
-	ival := moveSet.moves[i].Value()
+	ival := moveSet.moves[i].Value(moveSet.g)
 
 	// j value
-	jval := moveSet.moves[j].Value()
+	jval := moveSet.moves[j].Value(moveSet.g)
 
 	return ival > jval
 }
@@ -78,40 +83,47 @@ func (moveSet moveSet) Swap(i, j int) {
 }
 
 var (
-	grid     [GRIDLENGTH][GRIDLENGTH]*piece
+	board    *grid
 	selected *position
 )
 
-func setGrid(pos position, piece *piece) {
-	grid[pos.x][pos.y] = piece
-}
-
-func getGrid(pos position) *piece {
-	return grid[pos.x][pos.y]
-}
-
+// User function
 func grabPiece(x uint, y uint) {
-	if grid[x][y] != nil {
-		if grid[x][y].faction == playerFaction {
-			selected = &position{x: x, y: y}
-		}
+	from := position{x: x, y: y}
+	piece := getGrid(board, from)
+	if piece != nil && piece.faction == playerFaction {
+		selected = &from
 	}
 }
 
+// User function
 func movePiece(x uint, y uint) {
 	to := position{x: x, y: y}
 	if selected != nil {
-		if validateMove(move{from: *selected, to: to}) {
-			setGrid(to, getGrid(*selected))
-			setGrid(*selected, nil)
+		currentMove := move{from: *selected, to: to}
+		if validateMove(board, currentMove, 0) {
+			executeMove(board, currentMove)
 			selected = nil
 			enemyMove()
 		}
 	}
 }
 
+func executeMove(g *grid, m move) {
+	setGrid(g, m.to, getGrid(g, m.from))
+	setGrid(g, m.from, nil)
+}
+
+func setGrid(g *grid, pos position, piece *piece) {
+	g[pos.x][pos.y] = piece
+}
+
+func getGrid(g *grid, pos position) *piece {
+	return g[pos.x][pos.y]
+}
+
 func enemyMove() {
-	moveSet := findAllValidMoves(1)
+	moveSet := findAllValidMoves(board, 1, 0)
 	if len(moveSet.moves) == 0 {
 		os.Exit(0)
 	}
@@ -123,11 +135,10 @@ func enemyMove() {
 	}
 
 	chosen := moveSet.moves[rand.Intn(choices)]
-	setGrid(chosen.to, getGrid(chosen.from))
-	setGrid(chosen.from, nil)
+	executeMove(board, chosen)
 }
 
-func findAllValidMoves(faction uint) moveSet {
+func findAllValidMoves(g *grid, faction uint, level uint) moveSet {
 
 	validMoves := [1024]move{}
 	moveCount := uint(0)
@@ -135,13 +146,13 @@ func findAllValidMoves(faction uint) moveSet {
 	for fx := uint(0); fx < GRIDLENGTH; fx++ {
 		for fy := uint(0); fy < GRIDLENGTH; fy++ {
 			from := position{x: fx, y: fy}
-			fromPiece := getGrid(from)
+			fromPiece := getGrid(g, from)
 			if fromPiece != nil && fromPiece.faction == faction {
 				for x := uint(0); x < GRIDLENGTH; x++ {
 					for y := uint(0); y < GRIDLENGTH; y++ {
 						to := position{x: x, y: y}
 						move := move{from: from, to: to}
-						if validateMove(move) {
+						if validateMove(g, move, level) {
 							validMoves[moveCount] = move
 							moveCount++
 						}
@@ -151,45 +162,98 @@ func findAllValidMoves(faction uint) moveSet {
 		}
 	}
 
-	return moveSet{moves: validMoves[:moveCount]}
+	return moveSet{g: g, moves: validMoves[:moveCount]}
+}
+
+func validateMove(g *grid, move move, level uint) bool {
+	movingPiece := getGrid(g, move.from)
+	if movingPiece == nil {
+		return false
+	}
+	movingPieceFaction := movingPiece.faction
+	oppositeFaction := (movingPieceFaction + 1) % 2
+
+	// validate the movement
+	movement := validateMovement(g, move)
+
+	if !movement {
+		return false
+	}
+
+	if level == 0 {
+		isNotIntoCheck := isNotIntoCheck(g, move, oppositeFaction)
+
+		if !isNotIntoCheck {
+			return false
+		}
+	}
+
+	return true
+}
+
+func isNotIntoCheck(g *grid, move move, oppositeFaction uint) bool {
+	// validate whether or not the movement puts the mover in check
+	// clone the grid and do the move on the hypergrid
+	// then check whether or not the current player will be checkmate next turn
+	var hypergrid grid
+	hypergrid = *g
+	hypergridpointer := &hypergrid
+
+	executeMove(hypergridpointer, move)
+
+	validOpponentMoves := findAllValidMoves(hypergridpointer, oppositeFaction, 1)
+	// ensure that a valid move for the oponent isn't checkmating the current player
+	for _, move := range validOpponentMoves.moves {
+		if move.Value(hypergridpointer) == 20 {
+			return false
+		}
+	}
+
+	return true
+}
+
+func isCheckMate(faction uint) bool {
+	return false
 }
 
 // from and to
-func validateMove(move move) bool {
-
+func validateMovement(g *grid, move move) bool {
 	fx := move.from.x
 	fy := move.from.y
 	x := move.to.x
 	y := move.to.y
 
 	// selected piece
-	selectedPiece := grid[fx][fy]
+	selectedPiece := g[fx][fy]
 	// target piece
-	target := grid[x][y]
+	target := g[x][y]
 
 	switch selectedPiece.class {
 	// pawn
 	case 0:
 		var canDoubleStep bool
-		var advance uint
+		dy := int(y) - int(fy)
+		dx := int(fx) - int(x)
+		var advance int
 		if selectedPiece.faction == 0 {
 			// white
-			advance = fy - y
-			canDoubleStep = fy == 6 && grid[x][5] == nil
+			advance = -dy
+			canDoubleStep = fy == 6 && g[x][5] == nil
 		} else {
 			// black
-			advance = y - fy
-			canDoubleStep = fy == 1 && grid[x][2] == nil
+			advance = dy
+			canDoubleStep = fy == 1 && g[x][2] == nil
 		}
 
 		if fx == x {
 			return target == nil && (advance == 1 || (canDoubleStep && advance == 2))
 		} else {
-			sidemovement := fx - x
+			sidemovement := dx
 			if sidemovement < 0 {
 				sidemovement = -sidemovement
 			}
-			return advance == 1 && sidemovement == 1 && (target != nil && target.faction != selectedPiece.faction)
+
+			return advance == 1 && sidemovement == 1 && target != nil && target.faction != selectedPiece.faction
 		}
 	// knight
 	case 1:
@@ -230,7 +294,7 @@ func validateMove(move move) bool {
 		incy := vecy / dy
 
 		for tx, ty := int(fx)+incx, int(fy)+incy; tx != int(x); tx, ty = tx+incx, ty+incy {
-			if grid[tx][ty] != nil {
+			if g[tx][ty] != nil {
 				return false
 			}
 		}
@@ -264,7 +328,7 @@ func validateMove(move move) bool {
 		}
 
 		for tx, ty := int(fx)+incx, int(fy)+incy; tx != int(x) || ty != int(y); tx, ty = tx+incx, ty+incy {
-			if grid[tx][ty] != nil {
+			if g[tx][ty] != nil {
 				return false
 			}
 		}
@@ -298,7 +362,7 @@ func validateMove(move move) bool {
 		}
 
 		for tx, ty := int(fx)+incx, int(fy)+incy; tx != int(x) || ty != int(y); tx, ty = tx+incx, ty+incy {
-			if grid[tx][ty] != nil {
+			if g[tx][ty] != nil {
 				return false
 			}
 		}
@@ -332,21 +396,13 @@ func validateMove(move move) bool {
 		}
 
 		for tx, ty := int(fx)+incx, int(fy)+incy; tx != int(x) || ty != int(y); tx, ty = tx+incx, ty+incy {
-			if grid[tx][ty] != nil {
+			if g[tx][ty] != nil {
 				return false
 			}
 		}
 		return target == nil || target.faction != selectedPiece.faction
 	}
 
-	return false
-}
-
-func isCheck(faction uint) bool {
-	return false
-}
-
-func isCheckMate(faction uint) bool {
 	return false
 }
 
@@ -363,87 +419,85 @@ func startGame() {
 	// 5 = king
 
 	// set up board
+	var cb grid
+	board = &cb
 
 	// white pawns
 	for x := uint(0); x < GRIDLENGTH; x++ {
-		grid[x][6] = &(piece{
+		board[x][6] = &(piece{
 			class: 0, faction: 0,
 		})
 	}
 
-	grid[0][7] = &(piece{
+	board[0][7] = &(piece{
 		class: 3, faction: 0,
 	})
 
-	grid[1][7] = &(piece{
+	board[1][7] = &(piece{
 		class: 1, faction: 0,
 	})
 
-	grid[2][7] = &(piece{
+	board[2][7] = &(piece{
 		class: 2, faction: 0,
 	})
 
-	grid[3][7] = &(piece{
+	board[3][7] = &(piece{
 		class: 4, faction: 0,
 	})
 
-	grid[4][7] = &(piece{
+	board[4][7] = &(piece{
 		class: 5, faction: 0,
 	})
 
-	grid[5][7] = &(piece{
+	board[5][7] = &(piece{
 		class: 2, faction: 0,
 	})
 
-	grid[6][7] = &(piece{
+	board[6][7] = &(piece{
 		class: 1, faction: 0,
 	})
 
-	grid[7][7] = &(piece{
+	board[7][7] = &(piece{
 		class: 3, faction: 0,
 	})
 
 	// black pawns
 	for x := uint(0); x < GRIDLENGTH; x++ {
-		grid[x][1] = &(piece{
+		board[x][1] = &(piece{
 			class: 0, faction: 1,
 		})
 	}
 
-	grid[0][0] = &(piece{
+	board[0][0] = &(piece{
 		class: 3, faction: 1,
 	})
 
-	grid[1][0] = &(piece{
+	board[1][0] = &(piece{
 		class: 1, faction: 1,
 	})
 
-	grid[2][0] = &(piece{
+	board[2][0] = &(piece{
 		class: 2, faction: 1,
 	})
 
-	grid[3][0] = &(piece{
+	board[3][0] = &(piece{
 		class: 4, faction: 1,
 	})
 
-	grid[4][0] = &(piece{
+	board[4][0] = &(piece{
 		class: 5, faction: 1,
 	})
 
-	grid[5][0] = &(piece{
+	board[5][0] = &(piece{
 		class: 2, faction: 1,
 	})
 
-	grid[6][0] = &(piece{
+	board[6][0] = &(piece{
 		class: 1, faction: 1,
 	})
 
-	grid[7][0] = &(piece{
+	board[7][0] = &(piece{
 		class: 3, faction: 1,
 	})
 
-}
-
-func winCheck() bool {
-	return false
 }
