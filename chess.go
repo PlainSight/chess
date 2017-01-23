@@ -20,9 +20,30 @@ const (
 	playerFaction      = 0
 )
 
+type pieceType uint
+
+func (pt pieceType) Value() int {
+	switch pt {
+	case 0:
+		return 1
+	case 1:
+		return 3
+	case 2:
+		return 3
+	case 3:
+		return 5
+	case 4:
+		return 9
+	case 5:
+		return 20
+	default:
+		return 0
+	}
+}
+
 type piece struct {
 	faction uint
-	class   uint
+	class   pieceType
 }
 
 type position struct {
@@ -38,24 +59,15 @@ type move struct {
 type grid [GRIDLENGTH][GRIDLENGTH]*piece
 
 func (move move) Value(g *grid) int {
-	val := 0
+	actor := getGrid(g, move.from)
 	target := getGrid(g, move.to)
+
+	val := 1
+
 	if target != nil {
-		switch target.class {
-		case 0:
-			val = 1
-		case 1:
-			val = 3
-		case 2:
-			val = 3
-		case 3:
-			val = 5
-		case 4:
-			val = 9
-		case 5:
-			val = 20
-		}
+		val = 2 + target.class.Value() - actor.class.Value()
 	}
+
 	return val
 }
 
@@ -204,7 +216,7 @@ func isNotIntoCheck(g *grid, move move, oppositeFaction uint) bool {
 	validOpponentMoves := findAllValidMoves(hypergridpointer, oppositeFaction, 1)
 	// ensure that a valid move for the oponent isn't checkmating the current player
 	for _, move := range validOpponentMoves.moves {
-		if move.Value(hypergridpointer) == 20 {
+		if move.Value(hypergridpointer) >= 10 {
 			return false
 		}
 	}
