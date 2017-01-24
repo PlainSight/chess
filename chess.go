@@ -116,6 +116,8 @@ func movePiece(x uint, y uint) {
 		if validateMove(board, currentMove, 0) {
 			executeMove(board, currentMove)
 			selected = nil
+			drawScene()
+			time.Sleep(618 * time.Millisecond)
 			enemyMove()
 		}
 	}
@@ -202,6 +204,9 @@ func validateMove(g *grid, move move, level uint) bool {
 
 	return true
 }
+
+// to fix
+// king can move into other king
 
 func isNotIntoCheck(g *grid, move move, oppositeFaction uint) bool {
 	// validate whether or not the movement puts the mover in check

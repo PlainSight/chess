@@ -2,6 +2,7 @@
 // sources:
 // pieces.png
 // tile.png
+// selecttile.png
 // DO NOT EDIT!
 
 package main
@@ -84,7 +85,7 @@ func piecesPng() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "pieces.png", size: 427, mode: os.FileMode(420), modTime: time.Unix(1485170669, 0)}
+	info := bindataFileInfo{name: "pieces.png", size: 427, mode: os.FileMode(438), modTime: time.Unix(1485207406, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -104,7 +105,27 @@ func tilePng() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "tile.png", size: 96, mode: os.FileMode(420), modTime: time.Unix(1485169992, 0)}
+	info := bindataFileInfo{name: "tile.png", size: 96, mode: os.FileMode(438), modTime: time.Unix(1485207406, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
+var _selecttilePng = []byte("\x1f\x8b\x08\x00\x00\x09\x6e\x88\x00\xff\xea\x0c\xf0\x73\xe7\xe5\x92\xe2\x62\x60\x60\xe0\xf5\xf4\x70\x09\x02\xd2\x02\x20\xcc\xc1\x06\x24\xe5\x3f\xff\x4f\x04\x51\x9e\x2e\x8e\x21\x15\xb7\x92\x13\x12\x12\x7e\xf0\x33\xa5\x5c\x16\xc9\x64\xbb\xc4\xb3\x58\x4f\xa2\xf4\xe0\x0a\x6e\xb6\x4e\x6e\x86\x9a\x45\xb5\xf3\x23\x1c\xe5\xd6\x02\x95\x32\x78\xba\xfa\xb9\xac\x73\x4a\x68\x02\x04\x00\x00\xff\xff\x33\xb5\xba\xfb\x58\x00\x00\x00")
+
+func selecttilePngBytes() ([]byte, error) {
+	return bindataRead(
+		_selecttilePng,
+		"selecttile.png",
+	)
+}
+
+func selecttilePng() (*asset, error) {
+	bytes, err := selecttilePngBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "selecttile.png", size: 88, mode: os.FileMode(438), modTime: time.Unix(1485222610, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -163,6 +184,7 @@ func AssetNames() []string {
 var _bindata = map[string]func() (*asset, error){
 	"pieces.png": piecesPng,
 	"tile.png": tilePng,
+	"selecttile.png": selecttilePng,
 }
 
 // AssetDir returns the file names below a certain
@@ -206,6 +228,7 @@ type bintree struct {
 }
 var _bintree = &bintree{nil, map[string]*bintree{
 	"pieces.png": &bintree{piecesPng, map[string]*bintree{}},
+	"selecttile.png": &bintree{selecttilePng, map[string]*bintree{}},
 	"tile.png": &bintree{tilePng, map[string]*bintree{}},
 }}
 

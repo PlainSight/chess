@@ -18,12 +18,14 @@ func init() {
 }
 
 var (
-	cWIDTH  = 720
-	cHEIGHT = 720
-	xSCALE  = float32(cWIDTH) / 8
-	ySCALE  = float32(cHEIGHT) / 8
-	pieces  uint32
-	tile    uint32
+	cWIDTH       = 720
+	cHEIGHT      = 720
+	xSCALE       = float32(cWIDTH) / 8
+	ySCALE       = float32(cHEIGHT) / 8
+	pieces       uint32
+	tile         uint32
+	selectedTile uint32
+	pubWin       *glfw.Window
 )
 
 func handleResize(w *glfw.Window, cWidth int, cHeight int) {
@@ -76,14 +78,18 @@ func setup() {
 	tile = loadTileTexture()
 	defer gl.DeleteTextures(1, &tile)
 
+	selectedTile = loadSelectedTileTexture()
+	defer gl.DeleteTextures(1, &selectedTile)
+
 	setupScene()
 
 	window.SetMouseButtonCallback(handleClick)
 	window.SetSizeCallback(handleResize)
 
+	pubWin = window
+
 	for !window.ShouldClose() {
 		drawScene()
-		window.SwapBuffers()
 		glfw.WaitEvents()
 	}
 }
@@ -119,6 +125,35 @@ func loadPiecesTexture() uint32 {
 
 func loadTileTexture() uint32 {
 	imageBytes, _ := tilePngBytes()
+
+	img, _, _ := image.Decode(bytes.NewReader(imageBytes))
+
+	rgba := image.NewRGBA(img.Bounds())
+
+	draw.Draw(rgba, rgba.Bounds(), img, image.Point{0, 0}, draw.Src)
+
+	var texture uint32
+	gl.Enable(gl.TEXTURE_2D)
+	gl.GenTextures(1, &texture)
+	gl.BindTexture(gl.TEXTURE_2D, texture)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.TexImage2D(
+		gl.TEXTURE_2D,
+		0,
+		gl.RGBA,
+		int32(rgba.Rect.Size().X),
+		int32(rgba.Rect.Size().Y),
+		0,
+		gl.RGBA,
+		gl.UNSIGNED_BYTE,
+		gl.Ptr(rgba.Pix))
+
+	return texture
+}
+
+func loadSelectedTileTexture() uint32 {
+	imageBytes, _ := selecttilePngBytes()
 
 	img, _, _ := image.Decode(bytes.NewReader(imageBytes))
 
@@ -186,14 +221,18 @@ func drawPiece(x float32, y float32, w float32, h float32, piece *piece) {
 	gl.End()
 }
 
-func drawTile(x float32, y float32, w float32, h float32) {
+func drawTile(x float32, y float32, w float32, h float32, s bool) {
 
 	x1 := x
 	y1 := y
 	x2 := x + w
 	y2 := y + h
 
-	gl.BindTexture(gl.TEXTURE_2D, tile)
+	if s {
+		gl.BindTexture(gl.TEXTURE_2D, selectedTile)
+	} else {
+		gl.BindTexture(gl.TEXTURE_2D, tile)
+	}
 
 	gl.Color4f(1, 1, 1, 1)
 
@@ -222,7 +261,9 @@ func drawScene() {
 
 	for x := uint(0); x < GRIDLENGTH; x++ {
 		for y := uint(0); y < GRIDLENGTH; y++ {
-			drawTile(float32(x)*xSCALE, float32(y)*ySCALE, xSCALE, ySCALE)
+			selectTile := selected != nil && selected.x == x && selected.y == y
+
+			drawTile(float32(x)*xSCALE, float32(y)*ySCALE, xSCALE, ySCALE, selectTile)
 
 			if board[x][y] != nil {
 				drawPiece(float32(x)*xSCALE, float32(y)*ySCALE, xSCALE, ySCALE, board[x][y])
@@ -231,4 +272,5 @@ func drawScene() {
 	}
 
 	gl.Disable(gl.BLEND)
+	pubWin.SwapBuffers()
 }
