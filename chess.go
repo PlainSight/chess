@@ -65,6 +65,9 @@ func (move move) Value(g *grid) int {
 	val := 1
 
 	if target != nil {
+		if target.class == 5 {
+			return 99
+		}
 		val = 2 + target.class.Value() - actor.class.Value()
 	}
 
@@ -221,7 +224,7 @@ func isNotIntoCheck(g *grid, move move, oppositeFaction uint) bool {
 	validOpponentMoves := findAllValidMoves(hypergridpointer, oppositeFaction, 1)
 	// ensure that a valid move for the oponent isn't checkmating the current player
 	for _, move := range validOpponentMoves.moves {
-		if move.Value(hypergridpointer) >= 10 {
+		if move.Value(hypergridpointer) == 99 {
 			return false
 		}
 	}
@@ -378,7 +381,7 @@ func validateMovement(g *grid, move move) bool {
 			incy = vecy / dy
 		}
 
-		for tx, ty := int(fx)+incx, int(fy)+incy; tx != int(x) || ty != int(y); tx, ty = tx+incx, ty+incy {
+		for tx, ty := int(fx)+incx, int(fy)+incy; !(tx == int(x) && ty == int(y)); tx, ty = tx+incx, ty+incy {
 			if g[tx][ty] != nil {
 				return false
 			}
@@ -412,7 +415,7 @@ func validateMovement(g *grid, move move) bool {
 			incy = vecy / dy
 		}
 
-		for tx, ty := int(fx)+incx, int(fy)+incy; tx != int(x) || ty != int(y); tx, ty = tx+incx, ty+incy {
+		for tx, ty := int(fx)+incx, int(fy)+incy; !(tx == int(x) && ty == int(y)); tx, ty = tx+incx, ty+incy {
 			if g[tx][ty] != nil {
 				return false
 			}
