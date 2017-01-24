@@ -265,8 +265,8 @@ func drawScene() {
 
 			drawTile(float32(x)*xSCALE, float32(y)*ySCALE, xSCALE, ySCALE, selectTile)
 
-			if board[x][y] != nil {
-				drawPiece(float32(x)*xSCALE, float32(y)*ySCALE, xSCALE, ySCALE, board[x][y])
+			if board.tiles[x][y] != nil {
+				drawPiece(float32(x)*xSCALE, float32(y)*ySCALE, xSCALE, ySCALE, board.tiles[x][y])
 			}
 		}
 	}

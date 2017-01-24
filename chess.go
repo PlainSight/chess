@@ -16,9 +16,14 @@ func main() {
 }
 
 const (
-	GRIDLENGTH    uint = 8
-	playerFaction      = 0
+	GRIDLENGTH    uint        = 8
+	playerFaction             = 0
+	enpassant     specialMove = 0
+	castle        specialMove = 1
+	pawnPromotion specialMove = 2
 )
+
+type specialMove uint
 
 type pieceType uint
 
@@ -56,7 +61,14 @@ type move struct {
 	to   position
 }
 
-type grid [GRIDLENGTH][GRIDLENGTH]*piece
+type grid struct {
+	tiles          [GRIDLENGTH][GRIDLENGTH]*piece
+	leftRookMoved  [2]bool
+	rightRookMoved [2]bool
+	kingMoved      [2]bool
+	hasCastled     [2]bool
+	lastMove       move
+}
 
 func (move move) Value(g *grid) int {
 	actor := getGrid(g, move.from)
@@ -127,16 +139,20 @@ func movePiece(x uint, y uint) {
 }
 
 func executeMove(g *grid, m move) {
+	//check if pawn promotion
+	//check if castle
+	//check if en passent
+
 	setGrid(g, m.to, getGrid(g, m.from))
 	setGrid(g, m.from, nil)
 }
 
 func setGrid(g *grid, pos position, piece *piece) {
-	g[pos.x][pos.y] = piece
+	g.tiles[pos.x][pos.y] = piece
 }
 
 func getGrid(g *grid, pos position) *piece {
-	return g[pos.x][pos.y]
+	return g.tiles[pos.x][pos.y]
 }
 
 func enemyMove() {
@@ -181,6 +197,8 @@ func findAllValidMoves(g *grid, faction uint, level uint) moveSet {
 
 	return moveSet{g: g, moves: validMoves[:moveCount]}
 }
+
+// TODO: Implement castling, pawn promotion and en passant
 
 func validateMove(g *grid, move move, level uint) bool {
 	movingPiece := getGrid(g, move.from)
@@ -244,9 +262,9 @@ func validateMovement(g *grid, move move) bool {
 	y := move.to.y
 
 	// selected piece
-	selectedPiece := g[fx][fy]
+	selectedPiece := getGrid(g, move.from)
 	// target piece
-	target := g[x][y]
+	target := getGrid(g, move.to)
 
 	switch selectedPiece.class {
 	// pawn
@@ -258,11 +276,11 @@ func validateMovement(g *grid, move move) bool {
 		if selectedPiece.faction == 0 {
 			// white
 			advance = -dy
-			canDoubleStep = fy == 6 && g[x][5] == nil
+			canDoubleStep = fy == 6 && g.tiles[x][5] == nil
 		} else {
 			// black
 			advance = dy
-			canDoubleStep = fy == 1 && g[x][2] == nil
+			canDoubleStep = fy == 1 && g.tiles[x][2] == nil
 		}
 
 		if fx == x {
@@ -314,7 +332,7 @@ func validateMovement(g *grid, move move) bool {
 		incy := vecy / dy
 
 		for tx, ty := int(fx)+incx, int(fy)+incy; tx != int(x); tx, ty = tx+incx, ty+incy {
-			if g[tx][ty] != nil {
+			if g.tiles[tx][ty] != nil {
 				return false
 			}
 		}
@@ -348,7 +366,7 @@ func validateMovement(g *grid, move move) bool {
 		}
 
 		for tx, ty := int(fx)+incx, int(fy)+incy; tx != int(x) || ty != int(y); tx, ty = tx+incx, ty+incy {
-			if g[tx][ty] != nil {
+			if g.tiles[tx][ty] != nil {
 				return false
 			}
 		}
@@ -382,7 +400,7 @@ func validateMovement(g *grid, move move) bool {
 		}
 
 		for tx, ty := int(fx)+incx, int(fy)+incy; !(tx == int(x) && ty == int(y)); tx, ty = tx+incx, ty+incy {
-			if g[tx][ty] != nil {
+			if g.tiles[tx][ty] != nil {
 				return false
 			}
 		}
@@ -401,6 +419,22 @@ func validateMovement(g *grid, move move) bool {
 			dy = -dy
 		}
 
+		//check if castle
+		f := selectedPiece.faction
+		if !g.hasCastled[f] {
+			if !g.kingMoved[f] && !g.rightRookMoved[f] {
+				if dy == 0 && x == 6 {
+					return true
+				}
+			}
+
+			if !g.kingMoved[f] && !g.leftRookMoved[f] {
+				if dy == 0 && x == 2 {
+					return true
+				}
+			}
+		}
+
 		// check movement is valid
 		if dx > 1 || dy > 1 {
 			return false
@@ -416,7 +450,7 @@ func validateMovement(g *grid, move move) bool {
 		}
 
 		for tx, ty := int(fx)+incx, int(fy)+incy; !(tx == int(x) && ty == int(y)); tx, ty = tx+incx, ty+incy {
-			if g[tx][ty] != nil {
+			if g.tiles[tx][ty] != nil {
 				return false
 			}
 		}
@@ -444,79 +478,79 @@ func startGame() {
 
 	// white pawns
 	for x := uint(0); x < GRIDLENGTH; x++ {
-		board[x][6] = &(piece{
+		board.tiles[x][6] = &(piece{
 			class: 0, faction: 0,
 		})
 	}
 
-	board[0][7] = &(piece{
+	board.tiles[0][7] = &(piece{
 		class: 3, faction: 0,
 	})
 
-	board[1][7] = &(piece{
+	board.tiles[1][7] = &(piece{
 		class: 1, faction: 0,
 	})
 
-	board[2][7] = &(piece{
+	board.tiles[2][7] = &(piece{
 		class: 2, faction: 0,
 	})
 
-	board[3][7] = &(piece{
+	board.tiles[3][7] = &(piece{
 		class: 4, faction: 0,
 	})
 
-	board[4][7] = &(piece{
+	board.tiles[4][7] = &(piece{
 		class: 5, faction: 0,
 	})
 
-	board[5][7] = &(piece{
+	board.tiles[5][7] = &(piece{
 		class: 2, faction: 0,
 	})
 
-	board[6][7] = &(piece{
+	board.tiles[6][7] = &(piece{
 		class: 1, faction: 0,
 	})
 
-	board[7][7] = &(piece{
+	board.tiles[7][7] = &(piece{
 		class: 3, faction: 0,
 	})
 
 	// black pawns
 	for x := uint(0); x < GRIDLENGTH; x++ {
-		board[x][1] = &(piece{
+		board.tiles[x][1] = &(piece{
 			class: 0, faction: 1,
 		})
 	}
 
-	board[0][0] = &(piece{
+	board.tiles[0][0] = &(piece{
 		class: 3, faction: 1,
 	})
 
-	board[1][0] = &(piece{
+	board.tiles[1][0] = &(piece{
 		class: 1, faction: 1,
 	})
 
-	board[2][0] = &(piece{
+	board.tiles[2][0] = &(piece{
 		class: 2, faction: 1,
 	})
 
-	board[3][0] = &(piece{
+	board.tiles[3][0] = &(piece{
 		class: 4, faction: 1,
 	})
 
-	board[4][0] = &(piece{
+	board.tiles[4][0] = &(piece{
 		class: 5, faction: 1,
 	})
 
-	board[5][0] = &(piece{
+	board.tiles[5][0] = &(piece{
 		class: 2, faction: 1,
 	})
 
-	board[6][0] = &(piece{
+	board.tiles[6][0] = &(piece{
 		class: 1, faction: 1,
 	})
 
-	board[7][0] = &(piece{
+	board.tiles[7][0] = &(piece{
 		class: 3, faction: 1,
 	})
 
