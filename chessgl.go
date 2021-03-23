@@ -186,12 +186,16 @@ func setupScene() {
 	gl.LoadIdentity()
 	gl.Ortho(0, float64(cWIDTH), float64(cHEIGHT), 0, -1, 1)
 	gl.Viewport(0, 0, int32(cWIDTH), int32(cHEIGHT))
+	gl.Enable(gl.DEPTH_TEST)
+	gl.DepthFunc(gl.LESS)
+	gl.DepthRange(0, 1)
 }
 
 func destroyScene() {
 }
 
 func drawPiece(x float32, y float32, w float32, h float32, piece *piece) {
+	var z float32 = 0.8
 
 	x1 := x
 	y1 := y
@@ -210,18 +214,19 @@ func drawPiece(x float32, y float32, w float32, h float32, piece *piece) {
 	tymax := tymin + 0.5
 
 	gl.TexCoord2f(txmin, tymin)
-	gl.Vertex3f(x1, y1, 1)
+	gl.Vertex3f(x1, y1, z)
 	gl.TexCoord2f(txmax, tymin)
-	gl.Vertex3f(x2, y1, 1)
+	gl.Vertex3f(x2, y1, z)
 	gl.TexCoord2f(txmax, tymax)
-	gl.Vertex3f(x2, y2, 1)
+	gl.Vertex3f(x2, y2, z)
 	gl.TexCoord2f(txmin, tymax)
-	gl.Vertex3f(x1, y2, 1)
+	gl.Vertex3f(x1, y2, z)
 
 	gl.End()
 }
 
 func drawTile(x float32, y float32, w float32, h float32, s bool) {
+	var z float32 = 0.5
 
 	x1 := x
 	y1 := y
@@ -239,38 +244,44 @@ func drawTile(x float32, y float32, w float32, h float32, s bool) {
 	gl.Begin(gl.QUADS)
 
 	gl.TexCoord2f(0, 0)
-	gl.Vertex3f(x1, y1, 1)
+	gl.Vertex3f(x1, y1, z)
 
 	gl.TexCoord2f(1, 0)
-	gl.Vertex3f(x2, y1, 1)
+	gl.Vertex3f(x2, y1, z)
 
 	gl.TexCoord2f(1, 1)
-	gl.Vertex3f(x2, y2, 1)
+	gl.Vertex3f(x2, y2, z)
 
 	gl.TexCoord2f(0, 1)
-	gl.Vertex3f(x1, y2, 1)
+	gl.Vertex3f(x1, y2, z)
 
 	gl.End()
 }
 
 func drawScene() {
-	gl.Clear(gl.COLOR_BUFFER_BIT)
-
 	gl.Enable(gl.BLEND)
-	gl.BlendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+	gl.Enable(gl.DEPTH_TEST)
+	gl.DepthFunc(gl.LEQUAL)
+
+	gl.ClearDepth(1)
+	gl.ClearColor(0, 0, 0, 0)
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
 	for x := uint(0); x < GRIDLENGTH; x++ {
 		for y := uint(0); y < GRIDLENGTH; y++ {
 			selectTile := selected != nil && selected.x == x && selected.y == y
-
 			drawTile(float32(x)*xSCALE, float32(y)*ySCALE, xSCALE, ySCALE, selectTile)
+		}
+	}
 
+	for x := uint(0); x < GRIDLENGTH; x++ {
+		for y := uint(0); y < GRIDLENGTH; y++ {
 			if board[x][y] != nil {
 				drawPiece(float32(x)*xSCALE, float32(y)*ySCALE, xSCALE, ySCALE, board[x][y])
 			}
 		}
 	}
 
-	gl.Disable(gl.BLEND)
 	pubWin.SwapBuffers()
 }
